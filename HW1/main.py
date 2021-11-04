@@ -1,9 +1,8 @@
-# import input_file
 import numpy as np
 import pandas as pd
 import sys
 from collections import Counter
-
+import random
 
 # if len(sys.argv) != 3:
 #     print("Wrong Arguments\n\t- 1: Path to input file\n\t- 2: k (length of the consensus string)")
@@ -31,7 +30,6 @@ def generate_motif_profile(motifs):
         counter = Counter(row) # finding the counts of each nucleotide
         for nucleotide in profile: # iterating over nucleotide counts
             profile[nucleotide].append(counter[nucleotide]/10) # dividing each count by row count (10) to find probability
-
     return profile # return the profiles as dictionary
 
 def find_probabilities( k, profile, sequences ):
@@ -55,6 +53,25 @@ def score(probs, sequences, k):
             s += count[1]
     return current_motifs, s
 
+def score_gibbs(probs, sequences, rsm, k):
+    idx = random.choices(list(range(probs.shape[1])), weights=probs[0])[0]
+    current_motif = sequences[0, idx:(idx+k)]
+    current_motifs = np.concatenate([rsm, current_motif.reshape((1,-1))], axis=0)
+    s = 0
+    for row in current_motifs.T:
+        for count in Counter(row).most_common()[1:]:
+            s += count[1]
+    return current_motifs, s
+
+def laplace(motifs):
+    profile = {'A':[], 'C':[], 'G':[], 'T':[]} # to keep profile matrix
+    for row in motifs.T: # instead of finding the counts of each nucleotide column-wise, we are looking row-wise
+        counter = Counter(row) # finding the counts of each nucleotide
+        for nucleotide in profile: # iterating over nucleotide counts
+            profile[nucleotide].append((counter[nucleotide]+1)/13) # dividing each count by row count (10) to find probability
+
+    return profile # return the profiles as dictionary
+
 def randomized_motif_search(k, itr):
     best_motif = (0, 9999)
     score_update_counter = 0
@@ -72,7 +89,25 @@ def randomized_motif_search(k, itr):
         if score_update_counter == itr:
             return '\n'.join([''.join(i) for i in best_motif[0]])
 
-print(randomized_motif_search(10, 50))
-
 def gibbs_sampler(k, itr):
-    pass
+    best_motif = (0, 9999)
+    score_update_counter = 0
+    rsm = randomly_select_motifs(k)
+    while True:
+        rmv_idx = random.choice(range(10))
+        removed_motif = rsm.tolist().pop(rmv_idx)
+
+        motif_profile = laplace(rsm) # (n,) (1, n)             
+        probabilities = find_probabilities(k, motif_profile, generated_sequence[rmv_idx].reshape((1,-1))) # output ?
+
+        rsm, s = score_gibbs(probabilities, generated_sequence[rmv_idx].reshape((1,-1)), rsm, k)
+        if s < best_motif[1]:
+            best_motif = (rsm, s)
+            score_update_counter = 0    
+        else:
+            score_update_counter += 1
+            
+        if score_update_counter == itr:
+            return '\n'.join([''.join(i) for i in best_motif[0]])
+
+print(gibbs_sampler(10, 50))
