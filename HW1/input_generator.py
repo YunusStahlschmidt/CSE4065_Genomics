@@ -1,11 +1,11 @@
 import numpy as np
 import random
 import copy
+import pandas as pd
 nucleotides = ['A', 'G', 'T', 'C']
 
 sequences = np.random.choice(nucleotides, size=(10,490))
-motif = np.random.choice(nucleotides, size=(1,10)) 
-print(sequences)
+motif = np.random.choice(nucleotides, size=(1,10))
 
 def mutate_motif(motif):
     new_motif = copy.deepcopy(motif)
@@ -26,6 +26,10 @@ def generate_new_sequence(sequence, motif):
         new_sequence.append(row[:random_idx].tolist() + mutated_motif.tolist() + row[random_idx:].tolist()) # [random_idx]
     return np.array(new_sequence)
 
+generated_sequence = generate_new_sequence(sequences, motif)
+
 print(sequences.shape)
 print(motif.shape)
-print(generate_new_sequence(sequences, motif).shape)
+print(generated_sequence.shape)
+
+pd.DataFrame(generated_sequence).to_csv("./HW1/sequence.csv", index=False)
