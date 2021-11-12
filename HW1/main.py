@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 from collections import Counter
 import random
+import time
 
 # if len(sys.argv) != 3:
 #     print("Wrong Arguments\n\t- 1: Path to input file\n\t- 2: k (length of the consensus string)")
@@ -13,7 +14,7 @@ import random
 
 
 alphabet = [ 'A', 'C', 'G', 'T' ]
-generated_sequence = pd.read_csv("./HW1/sequence.csv").values
+generated_sequence = pd.read_csv("sequence.csv").values # ./HW1/
 k = 10
 
 def randomly_select_motifs(k):
@@ -87,7 +88,7 @@ def randomized_motif_search(k, itr):
             score_update_counter += 1
             
         if score_update_counter == itr:
-            return '\n'.join([''.join(i) for i in best_motif[0]])
+            return '\n'.join([''.join(i) for i in best_motif[0]] + [str(best_motif[1])])
 
 def gibbs_sampler(k, itr):
     best_motif = (0, 9999)
@@ -95,7 +96,8 @@ def gibbs_sampler(k, itr):
     rsm = randomly_select_motifs(k)
     while True:
         rmv_idx = random.choice(range(10))
-        removed_motif = rsm.tolist().pop(rmv_idx)
+        # removed_motif = rsm.tolist().pop(rmv_idx)
+        rsm = np.delete(rsm, rmv_idx, axis=0)
 
         motif_profile = laplace(rsm) # (n,) (1, n)             
         probabilities = find_probabilities(k, motif_profile, generated_sequence[rmv_idx].reshape((1,-1))) # output ?
@@ -108,6 +110,9 @@ def gibbs_sampler(k, itr):
             score_update_counter += 1
             
         if score_update_counter == itr:
-            return '\n'.join([''.join(i) for i in best_motif[0]])
+            return '\n'.join([''.join(i) for i in best_motif[0]] + [str(best_motif[1])])
 
+start = time.time()
 print(gibbs_sampler(10, 50))
+end = time.time()
+print(end - start)
