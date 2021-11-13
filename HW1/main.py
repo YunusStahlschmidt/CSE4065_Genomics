@@ -1,3 +1,4 @@
+from math import modf
 import numpy as np
 import pandas as pd
 import sys
@@ -5,20 +6,19 @@ from collections import Counter
 import random
 import time
 
-# if len(sys.argv) != 3:
+# if len(sys.argv) != 3: # check the number of command line arguments 
 #     print("Wrong Arguments\n\t- 1: Path to input file\n\t- 2: k (length of the consensus string)")
 #     exit()
 
-# generated_sequence = sys.argv[1]
-# k = sys.argv[2]
-
+# k = int(sys.argv[2]) # take k from command line
+# generated_sequence = pd.read_csv(sys.argv[1]).values # reading given csv file
 
 alphabet = [ 'A', 'C', 'G', 'T' ]
-generated_sequence = pd.read_csv("sequence.csv").values # ./HW1/
+generated_sequence = pd.read_csv("./HW1/sequence.csv").values # ./HW1/
 k = 10
 
 def randomly_select_motifs(k):
-    motif_indexes = np.random.choice(500-k, k) # chooses k substring starting indexes from a list ranging from 0 to 500-k 
+    motif_indexes = np.random.choice(500-k, 10) # chooses k substring starting indexes from a list ranging from 0 to 500-k 
     motifs = [] # list which will hold motifs matrix
     for index, sequence in enumerate(generated_sequence): # go over each sequence in the input
         selected_motif = sequence[motif_indexes[index]:(motif_indexes[index]+k)] # select substring according to randomly chosen substring starting index
@@ -45,19 +45,20 @@ def find_probabilities( k, profile, sequences ):
         total_probs.append(row_prob) # adding row prop to total
     return np.array(total_probs) # return final probs as numpy array
 
-def score(probs, sequences, k):
-    indices = np.argmax(probs, axis=1)
-    current_motifs = np.array([sequences[i, idx:(idx+k)] for i, idx in enumerate(indices)])
-    s = 0
+def score(probs, sequences, k): # score calculator for randomized motif search algorithm
+    indices = np.argmax(probs, axis=1) # finding the indices of max probs
+    current_motifs = np.array([sequences[z, idx:(idx+k)] for z, idx in enumerate(indices)]) # selected motifs based on probs
+    s = 0   # score
     for row in current_motifs.T:
-        for count in Counter(row).most_common()[1:]:
-            s += count[1]
+        for count in Counter(row).most_common()[1:]: # Counting the score of least common genomes
+            s += count[1]      # updating score
     return current_motifs, s
 
-def score_gibbs(probs, sequences, rsm, k):
-    idx = random.choices(list(range(probs.shape[1])), weights=probs[0])[0]
-    current_motif = sequences[0, idx:(idx+k)]
-    current_motifs = np.concatenate([rsm, current_motif.reshape((1,-1))], axis=0)
+
+def score_gibbs(probs, sequences, rsm, k): # score calculator for gibbs sampler
+    idx = random.choices(list(range(probs.shape[1])), weights=probs[0])[0]  # rolling an unfair dice based on probabilities
+    current_motif = sequences[0, idx:(idx+k)] # selected motif among probs
+    current_motifs = np.concatenate([rsm, current_motif.reshape((1,-1))], axis=0) # adding selected motif into motifs
     s = 0
     for row in current_motifs.T:
         for count in Counter(row).most_common()[1:]:
@@ -74,45 +75,51 @@ def laplace(motifs):
     return profile # return the profiles as dictionary
 
 def randomized_motif_search(k, itr):
-    best_motif = (0, 9999)
-    score_update_counter = 0
-    while True:
-        rsm = randomly_select_motifs(k)
+    best_motif = (0, 9999) # keeping the best motif and the score
+    score_update_counter = 0    # patient
+    while True:         
+        rsm = randomly_select_motifs(k) 
         motif_profile = generate_motif_profile(rsm)
         probabilities = find_probabilities(k, motif_profile, generated_sequence)
         current_motifs, s = score(probabilities, generated_sequence, k)
-        if s < best_motif[1]:
-            best_motif = (current_motifs, s)
-            score_update_counter = 0    
+        if s < best_motif[1]: # check if new score is less than previous score
+            best_motif = (current_motifs, s) # update motif and score
+            score_update_counter = 0   # if there is new update reset the patient
         else:
-            score_update_counter += 1
+            score_update_counter += 1 # else update the patient counter by 1
             
         if score_update_counter == itr:
-            return '\n'.join([''.join(i) for i in best_motif[0]] + [str(best_motif[1])])
+            return '\n'.join([''.join(i) for i in best_motif[0]]), best_motif[1]
 
-def gibbs_sampler(k, itr):
-    best_motif = (0, 9999)
-    score_update_counter = 0
-    rsm = randomly_select_motifs(k)
+def gibbs_sampler(k, itr): 
+    best_motif = (0, 9999) # keeping the best motif and the score
+    score_update_counter = 0 # patient
+    rsm = randomly_select_motifs(k) 
     while True:
         rmv_idx = random.choice(range(10))
-        # removed_motif = rsm.tolist().pop(rmv_idx)
         rsm = np.delete(rsm, rmv_idx, axis=0)
 
         motif_profile = laplace(rsm) # (n,) (1, n)             
-        probabilities = find_probabilities(k, motif_profile, generated_sequence[rmv_idx].reshape((1,-1))) # output ?
+        probabilities = find_probabilities(k, motif_profile, generated_sequence[rmv_idx].reshape((1,-1))) 
 
         rsm, s = score_gibbs(probabilities, generated_sequence[rmv_idx].reshape((1,-1)), rsm, k)
-        if s < best_motif[1]:
-            best_motif = (rsm, s)
-            score_update_counter = 0    
+        if s < best_motif[1]: # check if new score is less than previous score
+            best_motif = (rsm, s) # update motif and score
+            score_update_counter = 0 # reset the counter
         else:
-            score_update_counter += 1
+            score_update_counter += 1 # else update the patient counter by 1
             
-        if score_update_counter == itr:
-            return '\n'.join([''.join(i) for i in best_motif[0]] + [str(best_motif[1])])
+        if score_update_counter == itr: 
+            return '\n'.join([''.join(i) for i in best_motif[0]]), best_motif[1]
 
 start = time.time()
-print(gibbs_sampler(10, 50))
+avr_score = 0
+for i in range(10):
+    motif, score_ = randomized_motif_search(k, 50)
+    avr_score += score_
+
+avr_score = avr_score/10
+print(f"\nExample Motif for k={k}:\n\n{motif}\n\nAverage Score: {avr_score}\n")
+
 end = time.time()
 print(end - start)
