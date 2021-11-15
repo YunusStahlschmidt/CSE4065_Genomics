@@ -18,7 +18,7 @@ def mutate_motif(motif): # functio to generate (10,4) new motif
         new_motif[0][i] = selected_nucleotide # assign new mutated nucleotide to related index
     return new_motif[0] # return mutated motif 
     
-def generate_new_sequence(sequence, motif): # generate and insert mutated motifs to sequences
+def generate_new_sequence(sequences, motif): # generate and insert mutated motifs to sequences
     new_sequence = [] # list of new sequences that mutated motifs added 
     for row in sequences: # iterateing every sequence
         mutated_motif = mutate_motif(motif) # randomly generate motif and mutate 4 nucleotide
@@ -32,4 +32,4 @@ print(sequences.shape)
 print(motif.shape)
 print(generated_sequence.shape)
 
-pd.DataFrame(generated_sequence).to_csv("./HW1/sequence.csv", index=False) # save sequences into a csv file
+pd.DataFrame(generated_sequence).to_csv("./sequence.csv", index=False) # save sequences into a csv file
