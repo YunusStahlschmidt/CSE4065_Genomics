@@ -6,16 +6,15 @@ from collections import Counter
 import random
 import time
 
-# if len(sys.argv) != 3: # check the number of command line arguments 
-#     print("Wrong Arguments\n\t- 1: Path to input file\n\t- 2: k (length of the consensus string)")
-#     exit()
+if len(sys.argv) != 3: # check the number of command line arguments 
+    print("Wrong Arguments\n\t- 1: Path to input file\n\t- 2: k (length of the consensus string)")
+    exit()
 
-# k = int(sys.argv[2]) # take k from command line
-# generated_sequence = pd.read_csv(sys.argv[1]).values # reading given csv file
+k = int(sys.argv[2]) # take k from command line
+generated_sequence = pd.read_csv(sys.argv[1]).values # reading given csv file
 
 alphabet = [ 'A', 'C', 'G', 'T' ]
-generated_sequence = pd.read_csv("./HW1/sequence.csv").values # ./HW1/
-k = 10
+
 
 def randomly_select_motifs(k):
     motif_indexes = np.random.choice(500-k, 10) # chooses k substring starting indexes from a list ranging from 0 to 500-k 
@@ -74,9 +73,8 @@ def laplace(motifs):
 
     return profile # return the profiles as dictionary
 
-def randomized_motif_search(k, itr):
+def randomized_motif_search(k):
     best_motif = (0, 9999) # keeping the best motif and the score
-    score_update_counter = 0    # patient
     while True:         
         rsm = randomly_select_motifs(k) 
         motif_profile = generate_motif_profile(rsm)
@@ -84,11 +82,7 @@ def randomized_motif_search(k, itr):
         current_motifs, s = score(probabilities, generated_sequence, k)
         if s < best_motif[1]: # check if new score is less than previous score
             best_motif = (current_motifs, s) # update motif and score
-            score_update_counter = 0   # if there is new update reset the patient
         else:
-            score_update_counter += 1 # else update the patient counter by 1
-            
-        if score_update_counter == itr:
             return '\n'.join([''.join(i) for i in best_motif[0]]), best_motif[1]
 
 def gibbs_sampler(k, itr): 
@@ -113,13 +107,18 @@ def gibbs_sampler(k, itr):
             return '\n'.join([''.join(i) for i in best_motif[0]]), best_motif[1]
 
 start = time.time()
-avr_score = 0
+avr_score_rand = 0
+avr_score_gibbs = 0
 for i in range(10):
-    motif, score_ = randomized_motif_search(k, 50)
-    avr_score += score_
+    motif, score_ = randomized_motif_search(k)
+    avr_score_rand += score_
+    motif, score_ = gibbs_sampler(k, 50)
+    avr_score_gibbs += score_
 
-avr_score = avr_score/10
-print(f"\nExample Motif for k={k}:\n\n{motif}\n\nAverage Score: {avr_score}\n")
+avr_score_rand = avr_score_rand/10
+avr_score_gibbs = avr_score_gibbs/10
+print(f"\nExample Motif for Randomized k={k}:\n\n{motif}\n\nAverage Score: {avr_score_rand}\n\n")
+print(f"\nExample Motif for Gibbs k={k}:\n\n{motif}\n\nAverage Score: {avr_score_gibbs}\n")
 
 end = time.time()
 print(end - start)
